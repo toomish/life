@@ -64,15 +64,16 @@
 
 DRAWCELL_ARGLEN = 8 + BYTES_PER_PIXEL
 
-.equ EV_REL, 1
-.equ EV_ACQ, 2
-.equ EV_EXIT, 4
-.equ EV_RESTART, 8 # re-read file and draw life again
+.equ EV_REL, 		1
+.equ EV_ACQ, 		2
+.equ EV_EXIT, 		4
+.equ EV_RESTART, 	8 # re-read file and draw life again
+.equ EV_PRINT,		16
 
-.equ M_OPEN, 0001
-.equ M_MMAP, 0002
-.equ M_ICANON, 0004
-.equ M_GRAPHICS, 0010
+.equ M_OPEN,		0001
+.equ M_MMAP,		0002
+.equ M_ICANON,		0004
+.equ M_GRAPHICS,	0010
 
 .text
 .globl _start
@@ -106,8 +107,8 @@ _start:
 
 # check if arg is a directory
 
-	subl $64, %esp
-	movl $SYS_STAT, %eax
+	subl $128, %esp
+	movl $SYS_STAT64, %eax
 	movl 8(%ebp), %ebx
 	movl %esp, %ecx
 	int $0x80
@@ -115,10 +116,10 @@ _start:
 	testl %eax, %eax
 	jnz stat_error
 
-	movw 8(%esp), %ax
-	andw $S_IFMT, %ax
-	subw $S_IFDIR, %ax
-	testw %ax, %ax
+	movl 16(%esp), %eax
+	andl $S_IFMT, %eax
+	subl $S_IFDIR, %eax
+	testl %eax, %eax
 	jnz 1f
 
 	pushl $0
@@ -478,6 +479,10 @@ life_loop:
 	testb %al, %al
 	jnz event_handler
 
+	movl (pause), %eax
+	testl %eax, %eax
+	jnz life_loop
+
 resume:
 
 	copy_row $life_map + START, $life_map + BOTTOM
@@ -575,6 +580,8 @@ event_handler:
 	jnz release_display
 	testb $EV_RESTART, %al
 	jnz read_file
+	testb $EV_PRINT, %al
+	jnz export
 
 # is case when life is started, when its virtual terminal is nonactive
 # when this vt activated, process recieve SIGUSR2 signal
@@ -620,6 +627,9 @@ restore:
 	movl $SYS_CLOSE, %eax
 	movl (desc), %ebx
 	int $0x80
+
+export:
+	jmp resume
 
 exit:
 	movl %eax, %ebx
@@ -784,6 +794,16 @@ poll_loop:
 	cmpb $'r, %al
 	jne 1f
 	movb $EV_RESTART, (event)
+
+	1:
+	cmpb $' ', %al
+	jne 1f
+	notl (pause)
+
+	1:
+	cmpb $'p', %al
+	jne 1f
+	movb $EV_PRINT, (event)
 
 	1:
 	jmp poll_loop
@@ -992,4 +1012,4 @@ timespec:
 .comm prog_mode, 1
 .comm pollfd, 8
 .comm child_pid, 4
-
+.comm pause, 4
