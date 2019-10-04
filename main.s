@@ -176,13 +176,14 @@ _start:
 	jnz ioctl_error
 
 	movl %esp, %esi
-	movl $res, %edi
-	movl $2, %ecx
-	rep movsl
+	movl $fbx, %edi
+	movsl
+	movl $fby, %edi
+	movsl
 
 	addl $200, %esp
-	movl (res), %eax
-	mull (res + 4)
+	movl (fbx), %eax
+	mull (fby)
 	shll $BPP_SHIFT, %eax
 	movl %eax, (fbsize)
 
@@ -754,14 +755,14 @@ drawcell:
 	pushal
 	movl (fbmem), %edi
 	movl 40(%esp), %eax
-	mull (res)
+	mull (fbx)
 	addl 36(%esp), %eax
 	shll $BPP_SHIFT, %eax
 	addl %eax, %edi
 	movl $CELL_HEIGHT, %edx
 	mov_color_to_eax 44(%esp)
 
-	movl (res), %ebx
+	movl (fbx), %ebx
 	shll $BPP_SHIFT, %ebx
 
 	.draw_line:
@@ -1027,7 +1028,8 @@ timespec:
 .comm fbmem, 4
 .comm fbsize, 4
 .comm life_map, TOTAL_EXT
-.comm res, 8
+.comm fbx, 4
+.comm fby, 4
 .comm curx, 4
 .comm cury, 4
 .comm event, 1
