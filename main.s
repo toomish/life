@@ -362,11 +362,23 @@ read_next:
 	movl -8(%ebp), %edx
 	movl %esp, %esi
 
-.read_char:
+.charloop:
 	lodsb
+	cmpb $0x0a, %al
+	jne 1f
+
+	cmpl $WIDTH, %ecx
+	je .charloop_next
+
+	xorb %al, %al
+	subl %ecx, %edx
+	rep stosb
+	jmp 2f
+
+	1:
 	subb $'0, %al
 	testb $0b11111110, %al
-	jnz .inc_count
+	jnz .charloop_next
 
 	stosb
 	decl %ecx
@@ -374,16 +386,18 @@ read_next:
 	testl %ecx, %ecx
 	jnz 1f
 
+	2:
 	addl $2, %edi
 	movl $WIDTH, %ecx
 
-	1:	testl %edx, %edx
+	1:
+	testl %edx, %edx
 	jz read_end
 
-.inc_count:
+.charloop_next:
 	decl %ebx
 	testl %ebx, %ebx
-	jnz .read_char
+	jnz .charloop
 
 	movl %ecx, -4(%ebp)
 	movl %edx, -8(%ebp)
