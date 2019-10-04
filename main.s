@@ -118,18 +118,23 @@ _start:
 
 	movl 16(%esp), %eax
 	andl $S_IFMT, %eax
-	subl $S_IFDIR, %eax
-	testl %eax, %eax
+	testl $S_IFDIR, %eax
 	jnz 1f
+	testl $S_IFREG, %eax
+	jnz 2f
 
+	movl $1, (binary)
+	jmp 2f
+
+	1:
 	pushl $0
 	pushl $str_fnot
 	pushl 8(%ebp)
 	call print_strings
 	jmp restore
 
-	1:
-	addl $(64 - 6), %esp
+	2:
+	addl $(128 - 6), %esp
 
 # test if stdin refers to linux console
 
@@ -364,6 +369,10 @@ read_next:
 
 .charloop:
 	lodsb
+
+	testl $1, (binary)
+	jnz 1f
+
 	cmpb $0x0a, %al
 	jne 1f
 
@@ -1027,3 +1036,4 @@ timespec:
 .comm pollfd, 8
 .comm child_pid, 4
 .comm pause, 4
+.comm binary, 4
